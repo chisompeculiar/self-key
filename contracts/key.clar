@@ -1,5 +1,3 @@
-;; SelfKey: Decentralized Identity Management Contract
-
 (define-constant CONTRACT-OWNER tx-sender)
 (define-constant ERR-NOT-AUTHORIZED (err u1))
 (define-constant ERR-IDENTITY-EXISTS (err u2))
@@ -7,8 +5,8 @@
 (define-constant ERR-INVALID-CLAIM (err u4))
 (define-constant ERR-INVALID-DID (err u5))
 (define-constant ERR-INVALID-USER (err u6))
+(define-constant ERR-CLAIM-NOT-FOUND (err u7))
 
-;; Data Maps
 (define-map user-identities 
   principal 
   {
@@ -20,12 +18,10 @@
   }
 )
 
-;; Map to track verified claims
 (define-map verified-claims 
   { user: principal, claim: (string-ascii 200) } 
   bool)
 
-;; Create a new decentralized identity
 (define-public (create-identity (did (string-ascii 100)))
   (begin
     (asserts! (is-none (map-get? user-identities tx-sender)) ERR-IDENTITY-EXISTS)
@@ -42,12 +38,10 @@
         updated-at: block-height
       }
     )
-    
     (ok true)
   )
 )
 
-;; Add a claim to user's identity
 (define-public (add-claim (claim (string-ascii 200)))
   (let 
     (
@@ -65,7 +59,6 @@
           )
         )
       )
-      
       (map-set user-identities 
         tx-sender 
         (merge current-identity 
@@ -75,13 +68,11 @@
           }
         )
       )
-      
       (ok true)
     )
   )
 )
 
-;; Verify a claim (only contract owner can do this)
 (define-public (verify-claim (user principal) (claim (string-ascii 200)))
   (begin
     (asserts! (is-eq tx-sender CONTRACT-OWNER) ERR-NOT-AUTHORIZED)
@@ -93,19 +84,16 @@
       { user: user, claim: claim } 
       true
     )
-    
     (ok true)
   )
 )
 
-;; Check if a specific claim is verified
 (define-read-only (is-claim-verified (user principal) (claim (string-ascii 200)))
   (default-to false 
     (map-get? verified-claims { user: user, claim: claim })
   )
 )
 
-;; Get user identity details
 (define-read-only (get-identity (user principal))
   (map-get? user-identities user)
 )
