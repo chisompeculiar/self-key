@@ -1,89 +1,97 @@
-;; Selfkey: Decentralized Identity Management Contract
+;; SelfKey: Decentralized Identity Management Contract
 
+(define-constant CONTRACT-OWNER tx-sender)
+(define-constant ERR-NOT-AUTHORIZED (err u1))
+(define-constant ERR-IDENTITY-EXISTS (err u2))
+(define-constant ERR-IDENTITY-NOT-FOUND (err u3))
+(define-constant ERR-INVALID-CLAIM (err u4))
+
+;; Data Maps
 (define-map user-identities 
-  { user-principal: principal }
+  principal 
   {
-    name: (optional string-ascii 100),
-    email: (optional string-ascii 100),
-    age-verified: bool,
-    attributes: (list 10 (string-ascii 50))
+    did: (string-ascii 100),
+    verification-status: bool,
+    claims: (list 10 (string-ascii 200)),
+    created-at: uint,
+    updated-at: uint
   }
 )
 
-;; Error constants
-(define-constant ERR-NOT-AUTHORIZED (err u100))
-(define-constant ERR-IDENTITY-NOT-FOUND (err u101))
+;; Map to track verified claims
+(define-map verified-claims 
+  { user: principal, claim: (string-ascii 200) } 
+  bool)
 
-;; Create or update user identity
-(define-public (create-or-update-identity 
-  (name (optional string-ascii 100))
-  (email (optional string-ascii 100))
-  (age-verified bool)
-  (attributes (list 10 (string-ascii 50)))
-)
+;; Create a new decentralized identity
+(define-public (create-identity (did (string-ascii 100)))
   (begin
+    (asserts! (is-none (map-get? user-identities tx-sender)) ERR-IDENTITY-EXISTS)
+    
     (map-set user-identities 
-      { user-principal: tx-sender }
+      tx-sender 
       {
-        name: name,
-        email: email,
-        age-verified: age-verified,
-        attributes: attributes
+        did: did,
+        verification-status: false,
+        claims: (list),
+        created-at: block-height,
+        updated-at: block-height
       }
     )
+    
     (ok true)
   )
 )
 
-;; Retrieve user identity (with selective disclosure)
-(define-read-only (get-identity-attributes 
-  (user principal)
-  (requested-attributes (list 5 (string-ascii 50)))
-)
-  (match (map-get? user-identities { user-principal: user })
-    identity (filter-attributes identity requested-attributes)
-    (err ERR-IDENTITY-NOT-FOUND)
-  )
-)
-
-;; Helper function to filter attributes
-(define-private (filter-attributes 
-  (identity { 
-    name: (optional string-ascii 100), 
-    email: (optional string-ascii 100), 
-    age-verified: bool, 
-    attributes: (list 10 (string-ascii 50)) 
-  })
-  (requested-attributes (list 5 (string-ascii 50)))
-)
+;; Add a claim to user's identity
+(define-public (add-claim (claim (string-ascii 200)))
   (let 
     (
-      (filtered-attributes 
-        (filter 
-          (lambda (attr) (contains attr requested-attributes)) 
-          (get attributes identity)
+      (current-identity (unwrap! (map-get? user-identities tx-sender) ERR-IDENTITY-NOT-FOUND))
+      (updated-claims 
+        (if (< (len (get claims current-identity)) u10)
+          (append (get claims current-identity) claim)
+          (get claims current-identity)
         )
       )
     )
-    {
-      name: (get name identity),
-      email: (get email identity),
-      age-verified: (get age-verified identity),
-      attributes: filtered-attributes
-    }
+    
+    (map-set user-identities 
+      tx-sender 
+      (merge current-identity 
+        { 
+          claims: updated-claims,
+          updated-at: block-height 
+        }
+      )
+    )
+    
+    (ok true)
   )
 )
 
-;; Verify age
-(define-public (verify-age (is-of-age bool))
+;; Verify a claim (only contract owner can do this)
+(define-public (verify-claim (user principal) (claim (string-ascii 200)))
   (begin
-    (map-set user-identities 
-      { user-principal: tx-sender }
-      (merge 
-        (unwrap! (map-get? user-identities { user-principal: tx-sender }) ERR-IDENTITY-NOT-FOUND)
-        { age-verified: is-of-age }
-      )
+    (asserts! (is-eq tx-sender CONTRACT-OWNER) ERR-NOT-AUTHORIZED)
+    
+    (map-set verified-claims 
+      { user: user, claim: claim } 
+      true
     )
+    
     (ok true)
   )
+)
+
+;; Check if a specific claim is verified
+(define-read-only (is-claim-verified (user principal) (claim (string-ascii 200)))
+  (default-to false 
+    (map-get? verified-claims { user: user, claim: claim })
+  )
+)
+
+;; Get user identity details
+(define-read-only (get-identity (user principal))
+  (map-get? user-identities user)
 )
