@@ -1,51 +1,94 @@
-# Selfkey: Decentralized Self-Sovereign Identity Management
+# Sovereign Identity Management on Stacks
 
-## Overview
-SovID is a blockchain-based identity management platform that empowers users to have complete control over their personal information while enabling selective disclosure of identity attributes.
+A comprehensive decentralized identity management system built on the Stacks blockchain, enabling users to create, manage, and verify their digital identities while maintaining full control over their personal information.
 
-## Key Features
-- Self-sovereign identity creation
-- Selective attribute disclosure
-- Age verification
-- Secure, immutable identity storage
-- User-controlled privacy settings
+## Core Features
 
-## Smart Contract Functionality
-- `create-or-update-identity`: Create or modify user identity
-- `get-identity-attributes`: Retrieve specific identity attributes
-- `verify-age`: Verify and update age status
+- **Decentralized Identity Creation**: Create and manage DIDs (Decentralized Identifiers)
+- **Claims Management**: Add and verify identity claims
+- **Verification System**: Two-tier verification with individual claim verification and overall identity status
+- **Privacy Controls**: Selective disclosure through granular claim management
+- **Owner-Controlled Updates**: Users maintain full control over their identity attributes
+- **Scalable Storage**: Support for multiple claims per identity (up to 10 verified claims)
 
-## Technologies
-- Blockchain: Stacks
-- Smart Contract Language: Clarity
-- Key Principles: Privacy, User Control, Selective Disclosure
+## Technical Implementation
 
-## Use Cases
-1. Age verification for services
-2. Professional credential sharing
-3. Privacy-preserving authentication
-4. Secure personal data management
+### Smart Contract Capabilities
+
+- Identity Creation and Management
+  - Create new identities with DIDs
+  - Update existing DIDs
+  - Add and manage identity claims
+  
+- Verification System
+  - Verify individual claims
+  - Set overall identity verification status
+  - Check verification status of claims and identities
+
+- Data Retrieval
+  - Get complete identity information
+  - Retrieve all claims for an identity
+  - Check verification status
+  - Track total number of identities
+
+### Security Features
+
+- Contract owner authorization for sensitive operations
+- Input validation for DIDs and claims
+- Size limits on claims and identities
+- Immutable creation timestamps
+- Update tracking through block height
 
 ## Getting Started
 
 ### Prerequisites
-- Stacks wallet
-- Web3 development environment
-- Clarity smart contract development tools
 
-### Installation
+- Stacks Wallet
+- Clarity Development Environment
+- Basic understanding of DIDs and claims
+
+### Contract Deployment
+
 1. Clone the repository
-2. Install dependencies
-3. Deploy smart contract to Stacks testnet/mainnet
+2. Configure your Stacks wallet
+3. Deploy using Clarinet or stacks-cli:
+   ```bash
+   clarinet deploy identity-management
+   ```
 
-## Security Considerations
-- Users have full control of their identity
-- No central authority can modify user data
-- Selective disclosure prevents unnecessary data exposure
+### Usage Examples
 
-## Future Roadmap
-- Multi-chain support
-- Advanced privacy features
-- Decentralized reputation system
-- Integration with identity providers
+Create a new identity:
+```clarity
+(contract-call? .identity-management create-identity "did:stack:1234")
+```
+
+Add a claim:
+```clarity
+(contract-call? .identity-management add-claim "education:degree=bachelor")
+```
+
+## Architecture
+
+- **Storage Layer**: Efficient map structures for identities and claims
+- **Access Control**: Owner-based authorization system
+- **Verification Layer**: Two-tier verification system
+- **Query Interface**: Comprehensive read-only functions
+
+## Error Handling
+
+The contract includes specific error codes for various scenarios:
+- Invalid authorization
+- Duplicate identities
+- Non-existent identities
+- Invalid claims/DIDs
+- Claim verification errors
+
+## Future Enhancements
+
+- Cross-chain identity verification
+- Enhanced privacy features through zero-knowledge proofs
+- Integration with external identity providers
+- Reputation system implementation
+- Governance mechanisms for identity verification
 
