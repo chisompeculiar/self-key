@@ -22,6 +22,8 @@
   { user: principal, claim: (string-ascii 200) } 
   bool)
 
+(define-data-var identity-count uint u0)
+
 (define-public (create-identity (did (string-ascii 100)))
   (begin
     (asserts! (is-none (map-get? user-identities tx-sender)) ERR-IDENTITY-EXISTS)
@@ -37,6 +39,28 @@
         created-at: block-height,
         updated-at: block-height
       }
+    )
+    (var-set identity-count (+ (var-get identity-count) u1))
+    (ok true)
+  )
+)
+
+(define-public (update-did (new-did (string-ascii 100)))
+  (let 
+    (
+      (current-identity (unwrap! (map-get? user-identities tx-sender) ERR-IDENTITY-NOT-FOUND))
+    )
+    (asserts! (> (len new-did) u0) ERR-INVALID-DID)
+    (asserts! (<= (len new-did) u100) ERR-INVALID-DID)
+    
+    (map-set user-identities 
+      tx-sender 
+      (merge current-identity 
+        { 
+          did: new-did,
+          updated-at: block-height 
+        }
+      )
     )
     (ok true)
   )
@@ -88,6 +112,29 @@
   )
 )
 
+(define-public (set-verification-status (user principal) (status bool))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT-OWNER) ERR-NOT-AUTHORIZED)
+    (asserts! (is-some (map-get? user-identities user)) ERR-INVALID-USER)
+    
+    (let
+      (
+        (current-identity (unwrap-panic (map-get? user-identities user)))
+      )
+      (map-set user-identities 
+        user 
+        (merge current-identity 
+          { 
+            verification-status: status,
+            updated-at: block-height 
+          }
+        )
+      )
+      (ok true)
+    )
+  )
+)
+
 (define-read-only (is-claim-verified (user principal) (claim (string-ascii 200)))
   (default-to false 
     (map-get? verified-claims { user: user, claim: claim })
@@ -96,4 +143,23 @@
 
 (define-read-only (get-identity (user principal))
   (map-get? user-identities user)
+)
+
+(define-read-only (get-all-claims (user principal))
+  (match (map-get? user-identities user)
+    identity (ok (get claims identity))
+    (err ERR-IDENTITY-NOT-FOUND)
+  )
+)
+
+
+(define-read-only (is-identity-verified (user principal))
+  (match (map-get? user-identities user)
+    identity (ok (get verification-status identity))
+    (err ERR-IDENTITY-NOT-FOUND)
+  )
+)
+
+(define-read-only (get-identity-count)
+  (ok (var-get identity-count))
 )
